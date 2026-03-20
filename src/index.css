@@ -6,44 +6,47 @@
 
 @layer base {
   :root {
-    --background: 230 25% 7%;
+    --background: 250 20% 6%;
     --foreground: 210 40% 93%;
 
-    --card: 230 20% 11%;
+    --card: 250 18% 10%;
     --card-foreground: 210 40% 93%;
 
-    --popover: 230 20% 11%;
+    --popover: 250 18% 10%;
     --popover-foreground: 210 40% 93%;
 
-    --primary: 160 100% 50%;
-    --primary-foreground: 230 25% 7%;
+    --primary: 270 80% 65%;
+    --primary-foreground: 250 20% 6%;
 
-    --secondary: 230 15% 18%;
+    --secondary: 250 15% 16%;
     --secondary-foreground: 210 40% 93%;
 
-    --muted: 230 15% 15%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 250 15% 14%;
+    --muted-foreground: 250 12% 55%;
 
-    --accent: 280 80% 65%;
+    --accent: 285 85% 60%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 210 40% 98%;
 
     --warning: 45 100% 55%;
-    --warning-foreground: 230 25% 7%;
+    --warning-foreground: 250 20% 6%;
 
     --success: 160 100% 50%;
-    --success-foreground: 230 25% 7%;
+    --success-foreground: 250 20% 6%;
 
-    --border: 230 15% 20%;
-    --input: 230 15% 18%;
-    --ring: 160 100% 50%;
+    --border: 260 15% 20%;
+    --input: 250 15% 16%;
+    --ring: 270 80% 65%;
 
     --radius: 0.75rem;
 
-    --neon-glow: 0 0 20px hsl(160 100% 50% / 0.3), 0 0 60px hsl(160 100% 50% / 0.1);
-    --neon-glow-accent: 0 0 20px hsl(280 80% 65% / 0.3), 0 0 60px hsl(280 80% 65% / 0.1);
+    --mochi-violet: 270 80% 65%;
+    --mochi-violet-bright: 285 85% 60%;
+    --mochi-glow: 0 0 20px hsl(270 80% 65% / 0.4), 0 0 60px hsl(285 85% 60% / 0.15);
+    --neon-glow: 0 0 20px hsl(270 80% 65% / 0.3), 0 0 60px hsl(270 80% 65% / 0.1);
+    --neon-glow-accent: 0 0 20px hsl(285 85% 60% / 0.3), 0 0 60px hsl(285 85% 60% / 0.1);
     --neon-glow-warning: 0 0 20px hsl(45 100% 55% / 0.3), 0 0 60px hsl(45 100% 55% / 0.1);
 
     --font-display: 'Space Grotesk', sans-serif;
@@ -80,6 +83,21 @@
   .neon-border-warning {
     border: 1px solid hsl(var(--warning) / 0.4);
     box-shadow: var(--neon-glow-warning);
+  }
+
+  .mochi-glow {
+    box-shadow: var(--mochi-glow);
+  }
+
+  .mochi-glow-btn {
+    border: 1px solid hsl(var(--primary) / 0.5);
+    box-shadow: var(--mochi-glow);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+
+  .mochi-glow-btn:hover {
+    border-color: hsl(var(--primary) / 0.8);
+    box-shadow: 0 0 30px hsl(270 80% 65% / 0.5), 0 0 80px hsl(285 85% 60% / 0.2);
   }
 
   .neon-text {
