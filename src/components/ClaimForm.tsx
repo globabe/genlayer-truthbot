@@ -79,7 +79,7 @@ export function ClaimForm({ gameState }: Props) {
     >
       <h3 className="mb-1 font-display text-lg font-semibold text-foreground">Submit Your Claim</h3>
       <p className="mb-4 text-sm text-muted-foreground">
-        Write two truths and one lie. The AI will try to find the lie.
+        Write two truths and one lie. Mochi will try to find the lie.
       </p>
 
       <Textarea
@@ -95,7 +95,7 @@ export function ClaimForm({ gameState }: Props) {
         <Button
           onClick={handleSubmit}
           disabled={!claim.trim() || isSubmitting}
-          className="neon-border bg-primary/10 text-primary hover:bg-primary/20 font-display"
+          className="mochi-glow-btn bg-primary/10 text-primary hover:bg-primary/20 font-display"
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">

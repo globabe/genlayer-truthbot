@@ -36,7 +36,7 @@ export function WalletButton() {
   }
 
   return (
-    <Button onClick={handleConnect} disabled={isLoading} className="neon-border bg-primary/10 text-primary hover:bg-primary/20 font-display">
+    <Button onClick={handleConnect} disabled={isLoading} className="mochi-glow-btn bg-primary/10 text-primary hover:bg-primary/20 font-display">
       {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Wallet className="mr-2 h-4 w-4" />}
       {isLoading ? "Connecting..." : "Connect Wallet"}
     </Button>
