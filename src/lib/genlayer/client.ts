@@ -35,7 +35,7 @@ export function getStudioUrl(): string {
 }
 
 export function getContractAddress(): string {
-  return import.meta.env.VITE_CONTRACT_ADDRESS || "";
+  return import.meta.env.VITE_CONTRACT_ADDRESS || "0xC7e8c433DC80739Acff0573678b1513AB55cF93A";
 }
 
 export function isMetaMaskInstalled(): boolean {

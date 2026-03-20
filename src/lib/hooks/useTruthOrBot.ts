@@ -72,13 +72,25 @@ export function useReveal() {
       setIsRevealing(true);
       return contract.reveal();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Aggressively refresh game state regardless of parsed result
       queryClient.invalidateQueries({ queryKey: ["gameState"] });
       setIsRevealing(false);
-      toast.success("The Bot has been identified!", { description: "The AI has spoken." });
+      if (result?.liar_index !== undefined && result.liar_index !== null) {
+        toast.success("The Bot has been identified!", {
+          description: result.reasoning || "The AI has spoken.",
+        });
+      } else {
+        // Transaction succeeded but couldn't parse result — state will refresh
+        toast.success("Reveal complete!", {
+          description: "The game state is updating...",
+        });
+      }
     },
     onError: (err: any) => {
       setIsRevealing(false);
+      // Even on error, refresh state — the tx may have succeeded on-chain
+      queryClient.invalidateQueries({ queryKey: ["gameState"] });
       toast.error("Failed to reveal", { description: err?.message || "Please try again." });
     },
   });

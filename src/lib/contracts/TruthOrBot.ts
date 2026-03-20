@@ -21,6 +21,95 @@ export interface TransactionReceipt {
   [key: string]: any;
 }
 
+// ─── Deep BFS Receipt Extraction + JSON Repair ───
+
+/**
+ * Recursively traverses nested receipt structures (result, payload, readable,
+ * consensus_data, leader_receipt, vote_data, etc.) via BFS to find the first
+ * JSON-parseable string containing "liar_index".
+ */
+function deepExtractResult(obj: any, depth = 0): any {
+  if (depth > 15 || obj == null) return null;
+
+  // If it's a string, try to parse it
+  if (typeof obj === "string") {
+    const cleaned = repairJson(obj);
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed && typeof parsed === "object" && "liar_index" in parsed) {
+        return parsed;
+      }
+    } catch {
+      // not valid JSON
+    }
+    return null;
+  }
+
+  // If it's a Map, convert to object
+  if (obj instanceof Map) {
+    const plain: Record<string, any> = {};
+    obj.forEach((v: any, k: string) => { plain[k] = v; });
+    return deepExtractResult(plain, depth);
+  }
+
+  // If it's an array, search each element
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = deepExtractResult(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // Object: BFS through known keys first, then all keys
+  if (typeof obj === "object") {
+    const priorityKeys = [
+      "result", "data", "payload", "readable", "output",
+      "consensus_data", "leader_receipt", "vote_data",
+      "execution_result", "contract_output", "receipt_result",
+    ];
+    const visited = new Set<string>();
+
+    for (const key of priorityKeys) {
+      if (key in obj) {
+        visited.add(key);
+        const found = deepExtractResult(obj[key], depth + 1);
+        if (found) return found;
+      }
+    }
+
+    for (const key of Object.keys(obj)) {
+      if (visited.has(key)) continue;
+      const found = deepExtractResult(obj[key], depth + 1);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Robust JSON repair: strips markdown fences, control chars,
+ * fixes unquoted keys, trailing commas, etc.
+ */
+function repairJson(raw: string): string {
+  let s = raw;
+  // Strip markdown code fences
+  s = s.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+  // Remove control characters except newline/tab
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  // Trim whitespace
+  s = s.trim();
+  // Extract JSON object if embedded in other text
+  const jsonMatch = s.match(/\{[\s\S]*\}/);
+  if (jsonMatch) s = jsonMatch[0];
+  // Fix trailing commas before closing braces/brackets
+  s = s.replace(/,\s*([}\]])/g, "$1");
+  // Fix unquoted keys
+  s = s.replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
+  return s;
+}
+
 class TruthOrBot {
   private contractAddress: `0x${string}`;
   private client: ReturnType<typeof createClient>;
@@ -58,6 +147,16 @@ class TruthOrBot {
         return obj as GameState;
       }
 
+      // Handle plain object
+      if (result && typeof result === "object") {
+        return {
+          players: Array.isArray(result.players) ? result.players : [],
+          claims: Array.isArray(result.claims) ? result.claims : [],
+          liar_index: Number(result.liar_index ?? 99),
+          is_resolved: Boolean(result.is_resolved ?? false),
+        };
+      }
+
       return result as GameState;
     } catch (error) {
       console.error("Error fetching game state:", error);
@@ -88,7 +187,7 @@ class TruthOrBot {
     }
   }
 
-  async reveal(): Promise<TransactionReceipt> {
+  async reveal(): Promise<RevealResult> {
     try {
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
@@ -97,16 +196,51 @@ class TruthOrBot {
         value: BigInt(0),
       });
 
-      const receipt = await this.client.waitForTransactionReceipt({
+      const receipt: any = await this.client.waitForTransactionReceipt({
         hash: txHash,
         status: "ACCEPTED" as any,
         retries: 30,
         interval: 5000,
       });
 
-      return receipt as TransactionReceipt;
+      console.log("[TruthOrBot] Raw reveal receipt:", JSON.stringify(receipt, null, 2));
+
+      // Deep BFS extraction from nested receipt
+      const extracted = deepExtractResult(receipt);
+      if (extracted && "liar_index" in extracted) {
+        console.log("[TruthOrBot] Extracted reveal result:", extracted);
+        return extracted as RevealResult;
+      }
+
+      // Fallback: the receipt itself may have the data at top level
+      if (receipt && typeof receipt === "object") {
+        if ("liar_index" in receipt) {
+          return { liar_index: Number(receipt.liar_index), reasoning: receipt.reasoning };
+        }
+        // Check result field directly
+        if (receipt.result) {
+          const resultExtracted = deepExtractResult(receipt.result);
+          if (resultExtracted) return resultExtracted as RevealResult;
+        }
+      }
+
+      // Transaction was accepted but we couldn't parse the LLM output.
+      // The game state should still be updated on-chain, so we return success.
+      console.warn("[TruthOrBot] Could not extract result from receipt, relying on state refresh");
+      return { liar_index: undefined, reasoning: "Result processed on-chain. Refreshing game state." };
+
     } catch (error: any) {
       console.error("Error revealing:", error);
+      // Check if the error message itself contains JSON result
+      if (error?.message) {
+        try {
+          const cleaned = repairJson(error.message);
+          const parsed = JSON.parse(cleaned);
+          if (parsed && "liar_index" in parsed) return parsed as RevealResult;
+        } catch {
+          // ignore
+        }
+      }
       throw new Error(error?.message || "Failed to reveal the liar");
     }
   }
