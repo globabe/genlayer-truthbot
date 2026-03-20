@@ -97,3 +97,30 @@ export function useReveal() {
 
   return { ...mutation, isRevealing, reveal: mutation.mutate, revealAsync: mutation.mutateAsync };
 }
+
+export function useResetGame() {
+  const contract = useTruthOrBotContract();
+  const { address } = useWallet();
+  const queryClient = useQueryClient();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!contract) throw new Error("Contract not configured.");
+      if (!address) throw new Error("Wallet not connected.");
+      setIsResetting(true);
+      return contract.resetGame();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gameState"] });
+      setIsResetting(false);
+      toast.success("Game reset!", { description: "A new round has begun." });
+    },
+    onError: (err: any) => {
+      setIsResetting(false);
+      toast.error("Failed to reset game", { description: err?.message || "Please try again." });
+    },
+  });
+
+  return { ...mutation, isResetting, resetGame: mutation.mutate };
+}

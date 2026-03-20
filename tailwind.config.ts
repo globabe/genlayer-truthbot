@@ -59,6 +59,8 @@ export default {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        "mochi-violet": "hsl(var(--mochi-violet))",
+        "mochi-bright": "hsl(var(--mochi-violet-bright))",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -3,10 +3,12 @@ import { HeroSection } from "@/components/HeroSection";
 import { ClaimForm } from "@/components/ClaimForm";
 import { PlayersBoard } from "@/components/PlayersBoard";
 import { RevealPanel } from "@/components/RevealPanel";
+import { ResetGameButton } from "@/components/ResetGameButton";
 import { HowItWorks } from "@/components/HowItWorks";
 import { useGameState } from "@/lib/hooks/useTruthOrBot";
 import { getContractAddress } from "@/lib/genlayer/client";
 import { AlertCircle } from "lucide-react";
+import { GenLayerLogo } from "@/components/GenLayerLogo";
 
 const Index = () => {
   const { data: gameState, isLoading, error } = useGameState();
@@ -38,7 +40,6 @@ const Index = () => {
           </div>
         ) : (
           <div className="mx-auto max-w-3xl space-y-6 pb-8">
-            {/* Game Board */}
             <div className="grid gap-6 md:grid-cols-5">
               <div className="md:col-span-3">
                 <PlayersBoard gameState={gameState ?? null} />
@@ -46,6 +47,7 @@ const Index = () => {
               <div className="md:col-span-2 space-y-6">
                 <ClaimForm gameState={gameState ?? null} />
                 <RevealPanel gameState={gameState ?? null} />
+                <ResetGameButton gameState={gameState ?? null} />
               </div>
             </div>
           </div>
@@ -55,7 +57,9 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="border-t border-border/30 py-8 text-center text-sm text-muted-foreground">
-          Built on <span className="text-primary">GenLayer</span> — Intelligent Contracts with AI consensus
+          <div className="flex items-center justify-center gap-2">
+            Built on <GenLayerLogo className="inline h-4 w-auto text-primary" /> — Intelligent Contracts with AI consensus
+          </div>
         </footer>
       </main>
     </div>
