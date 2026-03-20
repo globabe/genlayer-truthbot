@@ -205,33 +205,27 @@ class TruthOrBot {
 
       console.log("[TruthOrBot] Raw reveal receipt:", JSON.stringify(receipt, null, 2));
 
-      // Deep BFS extraction from nested receipt
       const extracted = deepExtractResult(receipt);
       if (extracted && "liar_index" in extracted) {
         console.log("[TruthOrBot] Extracted reveal result:", extracted);
         return extracted as RevealResult;
       }
 
-      // Fallback: the receipt itself may have the data at top level
       if (receipt && typeof receipt === "object") {
         if ("liar_index" in receipt) {
           return { liar_index: Number(receipt.liar_index), reasoning: receipt.reasoning };
         }
-        // Check result field directly
         if (receipt.result) {
           const resultExtracted = deepExtractResult(receipt.result);
           if (resultExtracted) return resultExtracted as RevealResult;
         }
       }
 
-      // Transaction was accepted but we couldn't parse the LLM output.
-      // The game state should still be updated on-chain, so we return success.
       console.warn("[TruthOrBot] Could not extract result from receipt, relying on state refresh");
       return { liar_index: undefined, reasoning: "Result processed on-chain. Refreshing game state." };
 
     } catch (error: any) {
       console.error("Error revealing:", error);
-      // Check if the error message itself contains JSON result
       if (error?.message) {
         try {
           const cleaned = repairJson(error.message);
@@ -242,6 +236,29 @@ class TruthOrBot {
         }
       }
       throw new Error(error?.message || "Failed to reveal the liar");
+    }
+  }
+
+  async resetGame(): Promise<TransactionReceipt> {
+    try {
+      const txHash = await this.client.writeContract({
+        address: this.contractAddress,
+        functionName: "reset_game",
+        args: [],
+        value: BigInt(0),
+      });
+
+      const receipt = await this.client.waitForTransactionReceipt({
+        hash: txHash,
+        status: "ACCEPTED" as any,
+        retries: 24,
+        interval: 5000,
+      });
+
+      return receipt as TransactionReceipt;
+    } catch (error: any) {
+      console.error("Error resetting game:", error);
+      throw new Error(error?.message || "Failed to reset game");
     }
   }
 }
