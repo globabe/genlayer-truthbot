@@ -120,7 +120,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const chainId = await getCurrentChainId();
       const correctNetwork = await isOnGenLayerNetwork();
       localStorage.removeItem(DISCONNECT_FLAG);
-      setState({ address: newAddress, chainId, isConnected: true, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+      setState({ address: newAddress, chainId, isConnected: true, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       return newAddress;
     } catch (err) {
       setState(prev => ({ ...prev, isLoading: false }));
