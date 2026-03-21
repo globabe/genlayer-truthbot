@@ -7,9 +7,8 @@ export function WalletButton() {
   const { address, isConnected, isLoading, isWalletInstalled, connectWallet, disconnectWallet } = useWallet();
 
   const handleConnect = async () => {
-    if (!isMetaMaskInstalled) {
-      toast.error("MetaMask not found", { description: "Please install MetaMask to play." });
-      window.open("https://metamask.io/download/", "_blank");
+    if (!isWalletInstalled) {
+      toast.error("No wallet found", { description: "Please install MetaMask, Rabby, or any Web3 wallet." });
       return;
     }
     try {
