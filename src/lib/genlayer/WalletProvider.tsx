@@ -23,7 +23,7 @@ export interface WalletState {
   chainId: string | null;
   isConnected: boolean;
   isLoading: boolean;
-  isMetaMaskInstalled: boolean;
+  isWalletInstalled: boolean;
   isOnCorrectNetwork: boolean;
 }
 
