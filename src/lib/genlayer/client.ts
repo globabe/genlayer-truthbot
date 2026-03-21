@@ -38,8 +38,13 @@ export function getContractAddress(): string {
   return import.meta.env.VITE_CONTRACT_ADDRESS || "0x9183D732CFe28201A3c5D4246f22010b4136d8b7";
 }
 
+export function isWalletInstalled(): boolean {
+  return typeof window !== "undefined" && !!window.ethereum;
+}
+
+/** @deprecated Use isWalletInstalled */
 export function isMetaMaskInstalled(): boolean {
-  return typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+  return isWalletInstalled();
 }
 
 export function getEthereumProvider(): EthereumProvider | null {
