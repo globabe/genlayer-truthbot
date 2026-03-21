@@ -96,11 +96,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connectWallet = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const address = await connectMetaMask();
+      const address = await connectWalletFn();
       const chainId = await getCurrentChainId();
       const correctNetwork = await isOnGenLayerNetwork();
       localStorage.removeItem(DISCONNECT_FLAG);
-      setState({ address, chainId, isConnected: true, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+      setState({ address, chainId, isConnected: true, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       return address;
     } catch (err) {
       setState(prev => ({ ...prev, isLoading: false }));
