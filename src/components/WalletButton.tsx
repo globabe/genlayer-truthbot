@@ -4,7 +4,7 @@ import { Wallet, LogOut, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export function WalletButton() {
-  const { address, isConnected, isLoading, isMetaMaskInstalled, connectWallet, disconnectWallet } = useWallet();
+  const { address, isConnected, isLoading, isWalletInstalled, connectWallet, disconnectWallet } = useWallet();
 
   const handleConnect = async () => {
     if (!isMetaMaskInstalled) {
