@@ -47,22 +47,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
-      const installed = checkMetaMask();
+      const installed = checkWallet();
       if (!installed) {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: false, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: false, isOnCorrectNetwork: false });
         return;
       }
       if (localStorage.getItem(DISCONNECT_FLAG) === "true") {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: false });
         return;
       }
       try {
         const accounts = await getAccounts();
         const chainId = await getCurrentChainId();
         const correctNetwork = await isOnGenLayerNetwork();
-        setState({ address: accounts[0] || null, chainId, isConnected: accounts.length > 0, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+        setState({ address: accounts[0] || null, chainId, isConnected: accounts.length > 0, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       } catch {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: false });
       }
     };
     init();
