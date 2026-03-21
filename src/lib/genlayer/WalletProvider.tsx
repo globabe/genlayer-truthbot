@@ -9,12 +9,6 @@ import {
   getEthereumProvider,
   GENLAYER_CHAIN_ID,
 } from "./client";
-  getAccounts,
-  getCurrentChainId,
-  isOnGenLayerNetwork,
-  getEthereumProvider,
-  GENLAYER_CHAIN_ID,
-} from "./client";
 
 const DISCONNECT_FLAG = "wallet_disconnected";
 
