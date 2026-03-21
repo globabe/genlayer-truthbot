@@ -41,7 +41,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     chainId: null,
     isConnected: false,
     isLoading: true,
-    isMetaMaskInstalled: false,
+    isWalletInstalled: false,
     isOnCorrectNetwork: false,
   });
 
