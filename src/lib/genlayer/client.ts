@@ -38,8 +38,13 @@ export function getContractAddress(): string {
   return import.meta.env.VITE_CONTRACT_ADDRESS || "0x9183D732CFe28201A3c5D4246f22010b4136d8b7";
 }
 
+export function isWalletInstalled(): boolean {
+  return typeof window !== "undefined" && !!window.ethereum;
+}
+
+/** @deprecated Use isWalletInstalled */
 export function isMetaMaskInstalled(): boolean {
-  return typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+  return isWalletInstalled();
 }
 
 export function getEthereumProvider(): EthereumProvider | null {
@@ -107,14 +112,25 @@ export async function isOnGenLayerNetwork(): Promise<boolean> {
   return parseInt(chainId, 16) === GENLAYER_CHAIN_ID;
 }
 
-export async function connectMetaMask(): Promise<string> {
-  if (!isMetaMaskInstalled()) throw new Error("MetaMask is not installed");
-  const accounts = await requestAccounts();
+export async function connectWallet(): Promise<string> {
+  if (!isWalletInstalled()) throw new Error("No Web3 wallet found");
+  const provider = getEthereumProvider()!;
+  // Force account picker every time
+  try {
+    await provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+  } catch (error: any) {
+    if (error.code === 4001) throw new Error("User rejected the connection request");
+    // Some wallets don't support wallet_requestPermissions, fall back
+  }
+  const accounts = await provider.request({ method: "eth_accounts" });
   if (!accounts?.length) throw new Error("No accounts found");
   const onCorrectNetwork = await isOnGenLayerNetwork();
   if (!onCorrectNetwork) await switchToGenLayerNetwork();
   return accounts[0];
 }
+
+/** @deprecated Use connectWallet */
+export const connectMetaMask = connectWallet;
 
 export async function switchAccount(): Promise<string> {
   const provider = getEthereumProvider();

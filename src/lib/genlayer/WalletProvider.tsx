@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
-  isMetaMaskInstalled as checkMetaMask,
-  connectMetaMask,
+  isWalletInstalled as checkWallet,
+  connectWallet as connectWalletFn,
   switchAccount,
   getAccounts,
   getCurrentChainId,
@@ -17,7 +17,7 @@ export interface WalletState {
   chainId: string | null;
   isConnected: boolean;
   isLoading: boolean;
-  isMetaMaskInstalled: boolean;
+  isWalletInstalled: boolean;
   isOnCorrectNetwork: boolean;
 }
 
@@ -35,28 +35,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     chainId: null,
     isConnected: false,
     isLoading: true,
-    isMetaMaskInstalled: false,
+    isWalletInstalled: false,
     isOnCorrectNetwork: false,
   });
 
   useEffect(() => {
     const init = async () => {
-      const installed = checkMetaMask();
+      const installed = checkWallet();
       if (!installed) {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: false, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: false, isOnCorrectNetwork: false });
         return;
       }
       if (localStorage.getItem(DISCONNECT_FLAG) === "true") {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: false });
         return;
       }
       try {
         const accounts = await getAccounts();
         const chainId = await getCurrentChainId();
         const correctNetwork = await isOnGenLayerNetwork();
-        setState({ address: accounts[0] || null, chainId, isConnected: accounts.length > 0, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+        setState({ address: accounts[0] || null, chainId, isConnected: accounts.length > 0, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       } catch {
-        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: false });
+        setState({ address: null, chainId: null, isConnected: false, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: false });
       }
     };
     init();
@@ -90,11 +90,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connectWallet = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const address = await connectMetaMask();
+      const address = await connectWalletFn();
       const chainId = await getCurrentChainId();
       const correctNetwork = await isOnGenLayerNetwork();
       localStorage.removeItem(DISCONNECT_FLAG);
-      setState({ address, chainId, isConnected: true, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+      setState({ address, chainId, isConnected: true, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       return address;
     } catch (err) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -114,7 +114,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const chainId = await getCurrentChainId();
       const correctNetwork = await isOnGenLayerNetwork();
       localStorage.removeItem(DISCONNECT_FLAG);
-      setState({ address: newAddress, chainId, isConnected: true, isLoading: false, isMetaMaskInstalled: true, isOnCorrectNetwork: correctNetwork });
+      setState({ address: newAddress, chainId, isConnected: true, isLoading: false, isWalletInstalled: true, isOnCorrectNetwork: correctNetwork });
       return newAddress;
     } catch (err) {
       setState(prev => ({ ...prev, isLoading: false }));
