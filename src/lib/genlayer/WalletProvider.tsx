@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
-  isMetaMaskInstalled as checkMetaMask,
-  connectMetaMask,
+  isWalletInstalled as checkWallet,
+  connectWallet as connectWalletFn,
   switchAccount,
+  getAccounts,
+  getCurrentChainId,
+  isOnGenLayerNetwork,
+  getEthereumProvider,
+  GENLAYER_CHAIN_ID,
+} from "./client";
   getAccounts,
   getCurrentChainId,
   isOnGenLayerNetwork,
