@@ -21,17 +21,14 @@ export interface TransactionReceipt {
   [key: string]: any;
 }
 
+// Manual gas limit to override Studio auto-estimation failures
+const GAS_LIMIT = 10000000;
+
 // ─── Deep BFS Receipt Extraction + JSON Repair ───
 
-/**
- * Recursively traverses nested receipt structures (result, payload, readable,
- * consensus_data, leader_receipt, vote_data, etc.) via BFS to find the first
- * JSON-parseable string containing "liar_index".
- */
 function deepExtractResult(obj: any, depth = 0): any {
   if (depth > 15 || obj == null) return null;
 
-  // If it's a string, try to parse it
   if (typeof obj === "string") {
     const cleaned = repairJson(obj);
     try {
@@ -45,14 +42,12 @@ function deepExtractResult(obj: any, depth = 0): any {
     return null;
   }
 
-  // If it's a Map, convert to object
   if (obj instanceof Map) {
     const plain: Record<string, any> = {};
     obj.forEach((v: any, k: string) => { plain[k] = v; });
     return deepExtractResult(plain, depth);
   }
 
-  // If it's an array, search each element
   if (Array.isArray(obj)) {
     for (const item of obj) {
       const found = deepExtractResult(item, depth + 1);
@@ -61,7 +56,6 @@ function deepExtractResult(obj: any, depth = 0): any {
     return null;
   }
 
-  // Object: BFS through known keys first, then all keys
   if (typeof obj === "object") {
     const priorityKeys = [
       "result", "data", "payload", "readable", "output",
@@ -88,24 +82,14 @@ function deepExtractResult(obj: any, depth = 0): any {
   return null;
 }
 
-/**
- * Robust JSON repair: strips markdown fences, control chars,
- * fixes unquoted keys, trailing commas, etc.
- */
 function repairJson(raw: string): string {
   let s = raw;
-  // Strip markdown code fences
   s = s.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
-  // Remove control characters except newline/tab
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-  // Trim whitespace
   s = s.trim();
-  // Extract JSON object if embedded in other text
   const jsonMatch = s.match(/\{[\s\S]*\}/);
   if (jsonMatch) s = jsonMatch[0];
-  // Fix trailing commas before closing braces/brackets
   s = s.replace(/,\s*([}\]])/g, "$1");
-  // Fix unquoted keys
   s = s.replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
   return s;
 }
@@ -130,7 +114,6 @@ class TruthOrBot {
         args: [],
       });
 
-      // Handle Map-based response from GenLayer
       if (result instanceof Map) {
         const obj: any = {};
         result.forEach((value: any, key: string) => {
@@ -147,7 +130,6 @@ class TruthOrBot {
         return obj as GameState;
       }
 
-      // Handle plain object
       if (result && typeof result === "object") {
         return {
           players: Array.isArray(result.players) ? result.players : [],
@@ -171,12 +153,13 @@ class TruthOrBot {
         functionName: "add_claim",
         args: [claim],
         value: BigInt(0),
-      });
+        gaslimit: GAS_LIMIT,
+      } as any);
 
       const receipt = await this.client.waitForTransactionReceipt({
         hash: txHash,
-        status: "ACCEPTED" as any,
-        retries: 24,
+        status: "FINALIZED" as any,
+        retries: 30,
         interval: 5000,
       });
 
@@ -194,36 +177,16 @@ class TruthOrBot {
         functionName: "reveal",
         args: [],
         value: BigInt(0),
-      });
+        gaslimit: GAS_LIMIT,
+      } as any);
 
       let receipt: any;
-      try {
-        receipt = await this.client.waitForTransactionReceipt({
-          hash: txHash,
-          status: "ACCEPTED" as any,
-          retries: 30,
-          interval: 5000,
-        });
-      } catch (waitError: any) {
-        // If ACCEPTED fails, try FINALIZED or poll game state
-        console.warn("[TruthOrBot] ACCEPTED wait failed, trying FINALIZED:", waitError?.message);
-        try {
-          receipt = await this.client.waitForTransactionReceipt({
-            hash: txHash,
-            status: "FINALIZED" as any,
-            retries: 15,
-            interval: 5000,
-          });
-        } catch {
-          // Last resort: poll game state to see if it resolved on-chain
-          console.warn("[TruthOrBot] FINALIZED wait also failed, polling game state");
-          const state = await this.getGameState();
-          if (state.is_resolved) {
-            return { liar_index: state.liar_index, reasoning: "Resolved on-chain." };
-          }
-          throw waitError;
-        }
-      }
+      receipt = await this.client.waitForTransactionReceipt({
+        hash: txHash,
+        status: "FINALIZED" as any,
+        retries: 40,
+        interval: 5000,
+      });
 
       console.log("[TruthOrBot] Raw reveal receipt:", JSON.stringify(receipt, null, 2));
 
@@ -254,14 +217,20 @@ class TruthOrBot {
 
     } catch (error: any) {
       console.error("Error revealing:", error);
+      // Even on error, check if the game resolved on-chain
+      try {
+        const state = await this.getGameState();
+        if (state.is_resolved) {
+          return { liar_index: state.liar_index, reasoning: "Resolved on-chain." };
+        }
+      } catch { /* ignore */ }
+
       if (error?.message) {
         try {
           const cleaned = repairJson(error.message);
           const parsed = JSON.parse(cleaned);
           if (parsed && "liar_index" in parsed) return parsed as RevealResult;
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
       }
       throw new Error(error?.message || "Failed to reveal the liar");
     }
@@ -274,12 +243,13 @@ class TruthOrBot {
         functionName: "reset_game",
         args: [],
         value: BigInt(0),
-      });
+        gaslimit: GAS_LIMIT,
+      } as any);
 
       const receipt = await this.client.waitForTransactionReceipt({
         hash: txHash,
-        status: "ACCEPTED" as any,
-        retries: 24,
+        status: "FINALIZED" as any,
+        retries: 30,
         interval: 5000,
       });
 
