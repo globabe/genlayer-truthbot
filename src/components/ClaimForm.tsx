@@ -38,7 +38,7 @@ export function ClaimForm({ gameState }: Props) {
       >
         <AlertCircle className="mx-auto mb-3 h-8 w-8 text-warning" />
         <p className="font-display text-foreground">Connect your wallet to join the game</p>
-        <p className="mt-1 text-sm text-muted-foreground">You need MetaMask to submit claims</p>
+        <p className="mt-1 text-sm text-muted-foreground">You need a Web3 wallet to submit claims</p>
       </motion.div>
     );
   }
