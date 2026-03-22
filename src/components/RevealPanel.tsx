@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useReveal } from "@/lib/hooks/useTruthOrBot";
 import { useWallet } from "@/lib/genlayer/WalletProvider";
 import { Button } from "@/components/ui/button";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import { Sparkles, CheckCircle2, MessageSquareText } from "lucide-react";
 import type { GameState } from "@/lib/contracts/TruthOrBot";
 import mochiMain from "@/assets/mochi-main.png";
 import mochiIdea from "@/assets/mochi-sticker-idea.png";
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function RevealPanel({ gameState }: Props) {
-  const { reveal, isRevealing } = useReveal();
+  const { reveal, isRevealing, revealReasoning } = useReveal();
   const { isConnected } = useWallet();
 
   const playerCount = gameState?.players?.length ?? 0;
@@ -39,7 +39,23 @@ export function RevealPanel({ gameState }: Props) {
         <p className="mt-2 text-muted-foreground">
           The AI identified <span className="font-bold text-destructive">Player {liarIndex + 1}</span> as the liar.
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+
+        {revealReasoning && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-4 rounded-lg bg-secondary/50 p-4 text-left"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquareText className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Mochi's Reasoning</span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{revealReasoning}</p>
+          </motion.div>
+        )}
+
+        <p className="mt-3 text-sm text-muted-foreground">
           Check the player cards above to see the claims and verdict.
         </p>
       </motion.div>
