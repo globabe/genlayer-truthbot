@@ -64,6 +64,11 @@ export function useReveal() {
   const { address } = useWallet();
   const queryClient = useQueryClient();
   const [isRevealing, setIsRevealing] = useState(false);
+  const [revealReasoning, setRevealReasoning] = useState<string | null>(null);
+
+  const forceRefresh = useCallback(async () => {
+    await queryClient.refetchQueries({ queryKey: ["gameState"] });
+  }, [queryClient]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -72,30 +77,38 @@ export function useReveal() {
       setIsRevealing(true);
       return contract.reveal();
     },
-    onSuccess: (result) => {
-      // Aggressively refresh game state regardless of parsed result
-      queryClient.invalidateQueries({ queryKey: ["gameState"] });
+    onSuccess: async (result) => {
       setIsRevealing(false);
+      if (result?.reasoning) setRevealReasoning(result.reasoning);
+      await forceRefresh();
       if (result?.liar_index !== undefined && result.liar_index !== null) {
         toast.success("The Bot has been identified!", {
           description: result.reasoning || "The AI has spoken.",
         });
       } else {
-        // Transaction succeeded but couldn't parse result — state will refresh
-        toast.success("Reveal complete!", {
-          description: "The game state is updating...",
-        });
+        toast.success("Reveal complete!", { description: "Refreshing game state..." });
+        // Poll until resolved
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          await forceRefresh();
+          const state = queryClient.getQueryData<any>(["gameState"]);
+          if (state?.is_resolved) break;
+        }
       }
     },
-    onError: (err: any) => {
+    onError: async (err: any) => {
       setIsRevealing(false);
-      // Even on error, refresh state — the tx may have succeeded on-chain
-      queryClient.invalidateQueries({ queryKey: ["gameState"] });
-      toast.error("Failed to reveal", { description: err?.message || "Please try again." });
+      await forceRefresh();
+      const state = queryClient.getQueryData<any>(["gameState"]);
+      if (state?.is_resolved) {
+        toast.success("The Bot has been identified!", { description: "Result found on-chain." });
+      } else {
+        toast.error("Failed to reveal", { description: err?.message || "Please try again." });
+      }
     },
   });
 
-  return { ...mutation, isRevealing, reveal: mutation.mutate, revealAsync: mutation.mutateAsync };
+  return { ...mutation, isRevealing, revealReasoning, reveal: mutation.mutate, revealAsync: mutation.mutateAsync };
 }
 
 export function useResetGame() {
