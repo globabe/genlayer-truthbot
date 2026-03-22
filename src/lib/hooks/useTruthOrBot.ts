@@ -124,7 +124,7 @@ export function useResetGame() {
       setIsResetting(true);
       return contract.resetGame();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ["gameState"] });
       setIsResetting(false);
       toast.success("Game reset!", { description: "A new round has begun." });
