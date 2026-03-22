@@ -38,7 +38,7 @@ export function ClaimForm({ gameState }: Props) {
       >
         <AlertCircle className="mx-auto mb-3 h-8 w-8 text-warning" />
         <p className="font-display text-foreground">Connect your wallet to join the game</p>
-        <p className="mt-1 text-sm text-muted-foreground">You need MetaMask to submit claims</p>
+        <p className="mt-1 text-sm text-muted-foreground">You need a Web3 wallet to submit claims</p>
       </motion.div>
     );
   }
@@ -79,13 +79,13 @@ export function ClaimForm({ gameState }: Props) {
     >
       <h3 className="mb-1 font-display text-lg font-semibold text-foreground">Submit Your Claim</h3>
       <p className="mb-4 text-sm text-muted-foreground">
-        Write two truths and one lie. Mochi will try to find the lie.
+        Make a factual claim Mochi can verify by searching the web — two truths and one lie!
       </p>
 
       <Textarea
         value={claim}
         onChange={(e) => setClaim(e.target.value)}
-        placeholder="e.g. I've visited 20 countries. I can speak 4 languages. I once met a president."
+        placeholder="e.g. GenLayer uses Intelligent Contracts. Bitcoin was created in 2009. The Eiffel Tower is in Berlin."
         className="min-h-[100px] resize-none border-border bg-secondary/50 font-display text-foreground placeholder:text-muted-foreground focus:ring-primary"
         maxLength={500}
       />
