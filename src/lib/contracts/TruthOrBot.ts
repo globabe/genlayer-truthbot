@@ -196,12 +196,34 @@ class TruthOrBot {
         value: BigInt(0),
       });
 
-      const receipt: any = await this.client.waitForTransactionReceipt({
-        hash: txHash,
-        status: "ACCEPTED" as any,
-        retries: 30,
-        interval: 5000,
-      });
+      let receipt: any;
+      try {
+        receipt = await this.client.waitForTransactionReceipt({
+          hash: txHash,
+          status: "ACCEPTED" as any,
+          retries: 30,
+          interval: 5000,
+        });
+      } catch (waitError: any) {
+        // If ACCEPTED fails, try FINALIZED or poll game state
+        console.warn("[TruthOrBot] ACCEPTED wait failed, trying FINALIZED:", waitError?.message);
+        try {
+          receipt = await this.client.waitForTransactionReceipt({
+            hash: txHash,
+            status: "FINALIZED" as any,
+            retries: 15,
+            interval: 5000,
+          });
+        } catch {
+          // Last resort: poll game state to see if it resolved on-chain
+          console.warn("[TruthOrBot] FINALIZED wait also failed, polling game state");
+          const state = await this.getGameState();
+          if (state.is_resolved) {
+            return { liar_index: state.liar_index, reasoning: "Resolved on-chain." };
+          }
+          throw waitError;
+        }
+      }
 
       console.log("[TruthOrBot] Raw reveal receipt:", JSON.stringify(receipt, null, 2));
 
@@ -219,6 +241,12 @@ class TruthOrBot {
           const resultExtracted = deepExtractResult(receipt.result);
           if (resultExtracted) return resultExtracted as RevealResult;
         }
+      }
+
+      // Final fallback: check game state
+      const finalState = await this.getGameState();
+      if (finalState.is_resolved) {
+        return { liar_index: finalState.liar_index, reasoning: "Result processed on-chain." };
       }
 
       console.warn("[TruthOrBot] Could not extract result from receipt, relying on state refresh");
