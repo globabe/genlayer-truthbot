@@ -18,13 +18,15 @@ export function useTruthOrBotContract(): TruthOrBot | null {
 
 export function useGameState() {
   const contract = useTruthOrBotContract();
+  const contractAddress = getContractAddress();
 
   return useQuery({
-    queryKey: ["gameState"],
+    queryKey: ["gameState", contractAddress],
     queryFn: () => {
       if (!contract) return Promise.resolve(null);
       return contract.getGameState();
     },
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchInterval: 8000,
     staleTime: 3000,
@@ -47,6 +49,7 @@ export function useAddClaim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gameState"] });
+      queryClient.refetchQueries({ queryKey: ["gameState"] });
       setIsSubmitting(false);
       toast.success("Claim submitted!", { description: "Your claim has been recorded on-chain." });
     },
