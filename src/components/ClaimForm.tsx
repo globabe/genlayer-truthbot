@@ -13,14 +13,12 @@ interface Props {
 
 export function ClaimForm({ gameState }: Props) {
   const [claim, setClaim] = useState("");
-  const { isConnected, address } = useWallet();
+  const { isConnected } = useWallet();
   const { addClaim, isSubmitting } = useAddClaim();
 
-  const playerCount = gameState?.players?.length ?? 0;
-  const isFull = playerCount >= 3;
-  const hasSubmitted = gameState?.players?.some(
-    (p) => p.toLowerCase() === address?.toLowerCase()
-  );
+  const totalClaims = gameState?.total_claims ?? 0;
+  const isFull = totalClaims >= 3;
+  const isResolved = gameState?.is_resolved ?? false;
 
   const handleSubmit = () => {
     if (!claim.trim()) return;
@@ -37,25 +35,14 @@ export function ClaimForm({ gameState }: Props) {
         className="neon-border rounded-xl bg-card p-6 text-center"
       >
         <AlertCircle className="mx-auto mb-3 h-8 w-8 text-warning" />
-        <p className="font-display text-foreground">Connect your wallet to join the game</p>
+        <p className="font-display text-foreground">Connect your wallet to play</p>
         <p className="mt-1 text-sm text-muted-foreground">You need a Web3 wallet to submit claims</p>
       </motion.div>
     );
   }
 
-  if (hasSubmitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="neon-border rounded-xl bg-card p-6 text-center"
-      >
-        <p className="font-display text-primary">✓ Claim submitted!</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Waiting for other players to join ({playerCount}/3)
-        </p>
-      </motion.div>
-    );
+  if (isResolved) {
+    return null; // Hide form when game is resolved
   }
 
   if (isFull) {
@@ -63,10 +50,10 @@ export function ClaimForm({ gameState }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="neon-border-warning rounded-xl bg-card p-6 text-center"
+        className="neon-border rounded-xl bg-card p-6 text-center"
       >
-        <p className="font-display text-warning">Game room is full</p>
-        <p className="mt-1 text-sm text-muted-foreground">3 players have already joined</p>
+        <p className="font-display text-primary">✓ All 3 claims submitted!</p>
+        <p className="mt-1 text-sm text-muted-foreground">Ready for Mochi to reveal the lie.</p>
       </motion.div>
     );
   }
@@ -77,9 +64,11 @@ export function ClaimForm({ gameState }: Props) {
       animate={{ opacity: 1, y: 0 }}
       className="neon-border rounded-xl bg-card p-6"
     >
-      <h3 className="mb-1 font-display text-lg font-semibold text-foreground">Submit Your Claim</h3>
+      <h3 className="mb-1 font-display text-lg font-semibold text-foreground">
+        Submit Claim {totalClaims + 1} of 3
+      </h3>
       <p className="mb-4 text-sm text-muted-foreground">
-        Make a factual claim Mochi can verify by searching the web — two truths and one lie!
+        Enter a factual claim Mochi can verify — two truths and one lie!
       </p>
 
       <Textarea

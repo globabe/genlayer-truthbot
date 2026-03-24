@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useReveal } from "@/lib/hooks/useTruthOrBot";
 import { useWallet } from "@/lib/genlayer/WalletProvider";
 import { Button } from "@/components/ui/button";
-import { Sparkles, CheckCircle2, MessageSquareText } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { GameState } from "@/lib/contracts/TruthOrBot";
 import mochiMain from "@/assets/mochi-main.png";
 import mochiIdea from "@/assets/mochi-sticker-idea.png";
@@ -12,13 +12,14 @@ interface Props {
 }
 
 export function RevealPanel({ gameState }: Props) {
-  const { reveal, isRevealing, revealReasoning } = useReveal();
+  const { reveal, isRevealing } = useReveal();
   const { isConnected } = useWallet();
 
-  const playerCount = gameState?.players?.length ?? 0;
+  const totalClaims = gameState?.total_claims ?? 0;
   const isResolved = gameState?.is_resolved ?? false;
-  const canReveal = playerCount >= 2 && !isResolved && isConnected;
+  const canReveal = totalClaims >= 3 && !isResolved && isConnected;
   const liarIndex = gameState?.liar_index ?? 99;
+  const liarClaim = gameState?.liar_claim ?? "";
 
   if (isResolved) {
     return (
@@ -36,27 +37,24 @@ export function RevealPanel({ gameState }: Props) {
         />
         <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-accent neon-text-accent" />
         <h3 className="font-display text-xl font-bold text-foreground">Mochi Has Spoken!</h3>
-        <p className="mt-2 text-muted-foreground">
-          The AI identified <span className="font-bold text-destructive">Player {liarIndex + 1}</span> as the liar.
-        </p>
 
-        {revealReasoning && (
+        {liarClaim && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-4 rounded-lg bg-secondary/50 p-4 text-left"
+            transition={{ delay: 0.2 }}
+            className="mt-4 rounded-lg bg-destructive/10 border border-destructive/20 p-4"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <MessageSquareText className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Mochi's Reasoning</span>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <span className="text-sm font-semibold text-destructive">The Lie (Claim {liarIndex + 1})</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{revealReasoning}</p>
+            <p className="text-base font-display font-bold text-foreground">"{liarClaim}"</p>
           </motion.div>
         )}
 
         <p className="mt-3 text-sm text-muted-foreground">
-          Check the player cards above to see the claims and verdict.
+          Check the claim cards above to see the full verdict.
         </p>
       </motion.div>
     );
@@ -79,9 +77,9 @@ export function RevealPanel({ gameState }: Props) {
       />
       <h3 className="font-display text-lg font-semibold text-foreground">Mochi's Verdict</h3>
       <p className="mt-1 mb-4 text-sm text-muted-foreground">
-        {playerCount < 2
-          ? "Need at least 2 players for Mochi to judge"
-          : "Ready! Mochi will analyze claims and find the liar."}
+        {totalClaims < 3
+          ? `Submit ${3 - totalClaims} more claim${3 - totalClaims > 1 ? "s" : ""} for Mochi to judge`
+          : "Ready! Mochi will analyze claims and find the lie."}
       </p>
 
       <Button
