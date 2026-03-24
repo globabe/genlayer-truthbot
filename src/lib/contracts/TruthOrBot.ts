@@ -3,7 +3,6 @@ import { studionet } from "genlayer-js/chains";
 
 export interface GameState {
   total_claims: number;
-  claims: string[];
   liar_index: number;
   liar_claim: string;
   is_resolved: boolean;
@@ -12,7 +11,6 @@ export interface GameState {
 export interface RevealResult {
   liar_index?: number;
   liar_claim?: string;
-  reasoning?: string;
   error?: string;
 }
 
@@ -44,32 +42,24 @@ class TruthOrBot {
         args: [],
       });
 
-      if (result instanceof Map) {
-        const obj: any = {};
-        result.forEach((v: any, k: string) => { obj[k] = v; });
-        return {
-          total_claims: Number(obj.total_claims ?? 0),
-          claims: Array.isArray(obj.claims) ? obj.claims : [],
-          liar_index: Number(obj.liar_index ?? 99),
-          liar_claim: String(obj.liar_claim ?? ""),
-          is_resolved: Boolean(obj.is_resolved ?? false),
-        };
-      }
+      // Handle Map response from genlayer-js
+      const obj: any = result instanceof Map
+        ? Object.fromEntries(result)
+        : result ?? {};
 
       return {
-        total_claims: Number(result?.total_claims ?? 0),
-        claims: Array.isArray(result?.claims) ? result.claims : [],
-        liar_index: Number(result?.liar_index ?? 99),
-        liar_claim: String(result?.liar_claim ?? ""),
-        is_resolved: Boolean(result?.is_resolved ?? false),
+        total_claims: Number(obj.total_claims ?? 0),
+        liar_index: Number(obj.liar_index ?? 99),
+        liar_claim: String(obj.liar_claim ?? ""),
+        is_resolved: Boolean(obj.is_resolved ?? false),
       };
     } catch (error) {
       console.error("Error fetching game state:", error);
-      throw new Error("Failed to fetch game state");
+      // Return empty state instead of throwing so UI can still render
+      return { total_claims: 0, liar_index: 99, liar_claim: "", is_resolved: false };
     }
   }
 
-  // Keep backward compat
   async getGameState(): Promise<GameState> {
     return this.checkNow();
   }
@@ -115,16 +105,13 @@ class TruthOrBot {
         interval: 5000,
       });
 
-      // After finalization, read on-chain state directly
       const state = await this.checkNow();
       if (state.is_resolved) {
         return { liar_index: state.liar_index, liar_claim: state.liar_claim };
       }
-
       return { liar_index: undefined, liar_claim: undefined };
     } catch (error: any) {
       console.error("Error revealing:", error);
-      // Check if resolved on-chain despite error
       try {
         const state = await this.checkNow();
         if (state.is_resolved) {
