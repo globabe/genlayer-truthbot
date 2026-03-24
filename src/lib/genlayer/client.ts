@@ -35,7 +35,7 @@ export function getStudioUrl(): string {
 }
 
 export function getContractAddress(): string {
-  return import.meta.env.VITE_CONTRACT_ADDRESS || "0x8a1eF24fAb1ae68C6cCb6578330Fb7C7cE7Bc24f";
+  return import.meta.env.VITE_CONTRACT_ADDRESS || "0x728f502Fa40204dC831a3Be0E9B10dE69e5F60d9";
 }
 
 export function isWalletInstalled(): boolean {

@@ -2,17 +2,18 @@ import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 
 export interface GameState {
-  players: string[];
+  total_claims: number;
   claims: string[];
   liar_index: number;
+  liar_claim: string;
   is_resolved: boolean;
 }
 
 export interface RevealResult {
   liar_index?: number;
+  liar_claim?: string;
   reasoning?: string;
   error?: string;
-  details?: string;
 }
 
 export interface TransactionReceipt {
@@ -21,78 +22,7 @@ export interface TransactionReceipt {
   [key: string]: any;
 }
 
-// Manual gas limit to override Studio auto-estimation failures
 const GAS_LIMIT = 10000000;
-
-// ─── Deep BFS Receipt Extraction + JSON Repair ───
-
-function deepExtractResult(obj: any, depth = 0): any {
-  if (depth > 15 || obj == null) return null;
-
-  if (typeof obj === "string") {
-    const cleaned = repairJson(obj);
-    try {
-      const parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed === "object" && "liar_index" in parsed) {
-        return parsed;
-      }
-    } catch {
-      // not valid JSON
-    }
-    return null;
-  }
-
-  if (obj instanceof Map) {
-    const plain: Record<string, any> = {};
-    obj.forEach((v: any, k: string) => { plain[k] = v; });
-    return deepExtractResult(plain, depth);
-  }
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const found = deepExtractResult(item, depth + 1);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  if (typeof obj === "object") {
-    const priorityKeys = [
-      "result", "data", "payload", "readable", "output",
-      "consensus_data", "leader_receipt", "vote_data",
-      "execution_result", "contract_output", "receipt_result",
-    ];
-    const visited = new Set<string>();
-
-    for (const key of priorityKeys) {
-      if (key in obj) {
-        visited.add(key);
-        const found = deepExtractResult(obj[key], depth + 1);
-        if (found) return found;
-      }
-    }
-
-    for (const key of Object.keys(obj)) {
-      if (visited.has(key)) continue;
-      const found = deepExtractResult(obj[key], depth + 1);
-      if (found) return found;
-    }
-  }
-
-  return null;
-}
-
-function repairJson(raw: string): string {
-  let s = raw;
-  s = s.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
-  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-  s = s.trim();
-  const jsonMatch = s.match(/\{[\s\S]*\}/);
-  if (jsonMatch) s = jsonMatch[0];
-  s = s.replace(/,\s*([}\]])/g, "$1");
-  s = s.replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
-  return s;
-}
 
 class TruthOrBot {
   private contractAddress: `0x${string}`;
@@ -106,44 +36,42 @@ class TruthOrBot {
     this.client = createClient(config);
   }
 
-  async getGameState(): Promise<GameState> {
+  async checkNow(): Promise<GameState> {
     try {
       const result: any = await this.client.readContract({
         address: this.contractAddress,
-        functionName: "get_game_state",
+        functionName: "check_now",
         args: [],
       });
 
       if (result instanceof Map) {
         const obj: any = {};
-        result.forEach((value: any, key: string) => {
-          if (key === "players" || key === "claims") {
-            obj[key] = value instanceof Array ? value : Array.from(value);
-          } else if (key === "liar_index") {
-            obj[key] = Number(value);
-          } else if (key === "is_resolved") {
-            obj[key] = Boolean(value);
-          } else {
-            obj[key] = value;
-          }
-        });
-        return obj as GameState;
-      }
-
-      if (result && typeof result === "object") {
+        result.forEach((v: any, k: string) => { obj[k] = v; });
         return {
-          players: Array.isArray(result.players) ? result.players : [],
-          claims: Array.isArray(result.claims) ? result.claims : [],
-          liar_index: Number(result.liar_index ?? 99),
-          is_resolved: Boolean(result.is_resolved ?? false),
+          total_claims: Number(obj.total_claims ?? 0),
+          claims: Array.isArray(obj.claims) ? obj.claims : [],
+          liar_index: Number(obj.liar_index ?? 99),
+          liar_claim: String(obj.liar_claim ?? ""),
+          is_resolved: Boolean(obj.is_resolved ?? false),
         };
       }
 
-      return result as GameState;
+      return {
+        total_claims: Number(result?.total_claims ?? 0),
+        claims: Array.isArray(result?.claims) ? result.claims : [],
+        liar_index: Number(result?.liar_index ?? 99),
+        liar_claim: String(result?.liar_claim ?? ""),
+        is_resolved: Boolean(result?.is_resolved ?? false),
+      };
     } catch (error) {
       console.error("Error fetching game state:", error);
       throw new Error("Failed to fetch game state");
     }
+  }
+
+  // Keep backward compat
+  async getGameState(): Promise<GameState> {
+    return this.checkNow();
   }
 
   async addClaim(claim: string): Promise<TransactionReceipt> {
@@ -180,58 +108,29 @@ class TruthOrBot {
         gaslimit: GAS_LIMIT,
       } as any);
 
-      let receipt: any;
-      receipt = await this.client.waitForTransactionReceipt({
+      await this.client.waitForTransactionReceipt({
         hash: txHash,
         status: "FINALIZED" as any,
         retries: 40,
         interval: 5000,
       });
 
-      console.log("[TruthOrBot] Raw reveal receipt:", JSON.stringify(receipt, null, 2));
-
-      const extracted = deepExtractResult(receipt);
-      if (extracted && "liar_index" in extracted) {
-        console.log("[TruthOrBot] Extracted reveal result:", extracted);
-        return extracted as RevealResult;
+      // After finalization, read on-chain state directly
+      const state = await this.checkNow();
+      if (state.is_resolved) {
+        return { liar_index: state.liar_index, liar_claim: state.liar_claim };
       }
 
-      if (receipt && typeof receipt === "object") {
-        if ("liar_index" in receipt) {
-          return { liar_index: Number(receipt.liar_index), reasoning: receipt.reasoning };
-        }
-        if (receipt.result) {
-          const resultExtracted = deepExtractResult(receipt.result);
-          if (resultExtracted) return resultExtracted as RevealResult;
-        }
-      }
-
-      // Final fallback: check game state
-      const finalState = await this.getGameState();
-      if (finalState.is_resolved) {
-        return { liar_index: finalState.liar_index, reasoning: "Result processed on-chain." };
-      }
-
-      console.warn("[TruthOrBot] Could not extract result from receipt, relying on state refresh");
-      return { liar_index: undefined, reasoning: "Result processed on-chain. Refreshing game state." };
-
+      return { liar_index: undefined, liar_claim: undefined };
     } catch (error: any) {
       console.error("Error revealing:", error);
-      // Even on error, check if the game resolved on-chain
+      // Check if resolved on-chain despite error
       try {
-        const state = await this.getGameState();
+        const state = await this.checkNow();
         if (state.is_resolved) {
-          return { liar_index: state.liar_index, reasoning: "Resolved on-chain." };
+          return { liar_index: state.liar_index, liar_claim: state.liar_claim };
         }
       } catch { /* ignore */ }
-
-      if (error?.message) {
-        try {
-          const cleaned = repairJson(error.message);
-          const parsed = JSON.parse(cleaned);
-          if (parsed && "liar_index" in parsed) return parsed as RevealResult;
-        } catch { /* ignore */ }
-      }
       throw new Error(error?.message || "Failed to reveal the liar");
     }
   }

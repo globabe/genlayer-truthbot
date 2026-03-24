@@ -24,7 +24,7 @@ export function useGameState() {
     queryKey: ["gameState", contractAddress],
     queryFn: () => {
       if (!contract) return Promise.resolve(null);
-      return contract.getGameState();
+      return contract.checkNow();
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -42,14 +42,14 @@ export function useAddClaim() {
 
   const mutation = useMutation({
     mutationFn: async (claim: string) => {
-      if (!contract) throw new Error("Contract not configured. Set VITE_CONTRACT_ADDRESS in your .env file.");
+      if (!contract) throw new Error("Contract not configured.");
       if (!address) throw new Error("Wallet not connected.");
       setIsSubmitting(true);
       return contract.addClaim(claim);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["gameState"] });
-      queryClient.refetchQueries({ queryKey: ["gameState"] });
+    onSuccess: async () => {
+      // Force refresh via check_now after claim
+      await queryClient.refetchQueries({ queryKey: ["gameState"] });
       setIsSubmitting(false);
       toast.success("Claim submitted!", { description: "Your claim has been recorded on-chain." });
     },
@@ -67,7 +67,6 @@ export function useReveal() {
   const { address } = useWallet();
   const queryClient = useQueryClient();
   const [isRevealing, setIsRevealing] = useState(false);
-  const [revealReasoning, setRevealReasoning] = useState<string | null>(null);
 
   const forceRefresh = useCallback(async () => {
     await queryClient.refetchQueries({ queryKey: ["gameState"] });
@@ -82,16 +81,16 @@ export function useReveal() {
     },
     onSuccess: async (result) => {
       setIsRevealing(false);
-      if (result?.reasoning) setRevealReasoning(result.reasoning);
       await forceRefresh();
-      if (result?.liar_index !== undefined && result.liar_index !== null) {
-        toast.success("The Bot has been identified!", {
-          description: result.reasoning || "The AI has spoken.",
+
+      if (result?.liar_claim) {
+        toast.success("Mochi found the lie!", {
+          description: `"${result.liar_claim}" was identified as the lie.`,
         });
       } else {
         toast.success("Reveal complete!", { description: "Refreshing game state..." });
         // Poll until resolved
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           await new Promise(r => setTimeout(r, 3000));
           await forceRefresh();
           const state = queryClient.getQueryData<any>(["gameState"]);
@@ -104,14 +103,14 @@ export function useReveal() {
       await forceRefresh();
       const state = queryClient.getQueryData<any>(["gameState"]);
       if (state?.is_resolved) {
-        toast.success("The Bot has been identified!", { description: "Result found on-chain." });
+        toast.success("Mochi found the lie!", { description: "Result found on-chain." });
       } else {
         toast.error("Failed to reveal", { description: err?.message || "Please try again." });
       }
     },
   });
 
-  return { ...mutation, isRevealing, revealReasoning, reveal: mutation.mutate, revealAsync: mutation.mutateAsync };
+  return { ...mutation, isRevealing, reveal: mutation.mutate, revealAsync: mutation.mutateAsync };
 }
 
 export function useResetGame() {
