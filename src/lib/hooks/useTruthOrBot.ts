@@ -142,7 +142,14 @@ export function useResetGame() {
       return contract.resetGame();
     },
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ["gameState"] });
+      queryClient.removeQueries({ queryKey: ["gameState"] });
+      if (contract) {
+        try {
+          const fresh = await contract.checkNow();
+          queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+        } catch {}
+      }
+      await queryClient.invalidateQueries({ queryKey: ["gameState"] });
       setIsResetting(false);
       toast.success("Game reset!", { description: "A new round has begun." });
     },
