@@ -48,8 +48,15 @@ export function useAddClaim() {
       return contract.addClaim(claim);
     },
     onSuccess: async () => {
-      // Force refresh via check_now after claim
-      await queryClient.refetchQueries({ queryKey: ["gameState"] });
+      // Force cache invalidation + immediate refetch from chain
+      queryClient.removeQueries({ queryKey: ["gameState"] });
+      if (contract) {
+        try {
+          const fresh = await contract.checkNow();
+          queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+        } catch {}
+      }
+      await queryClient.invalidateQueries({ queryKey: ["gameState"] });
       setIsSubmitting(false);
       toast.success("Claim submitted!", { description: "Your claim has been recorded on-chain." });
     },
