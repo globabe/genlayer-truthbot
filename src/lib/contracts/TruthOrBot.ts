@@ -35,6 +35,10 @@ class TruthOrBot {
   }
 
   async checkNow(): Promise<GameState> {
+    if (!this.contractAddress || !this.contractAddress.startsWith("0x")) {
+      console.warn("Invalid contract address, returning default state");
+      return { total_claims: 0, liar_index: 99, liar_claim: "", is_resolved: false };
+    }
     try {
       const result: any = await this.client.readContract({
         address: this.contractAddress,
