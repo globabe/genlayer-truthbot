@@ -77,8 +77,15 @@ export function useReveal() {
   const [isRevealing, setIsRevealing] = useState(false);
 
   const forceRefresh = useCallback(async () => {
-    await queryClient.refetchQueries({ queryKey: ["gameState"] });
-  }, [queryClient]);
+    queryClient.removeQueries({ queryKey: ["gameState"] });
+    if (contract) {
+      try {
+        const fresh = await contract.checkNow();
+        queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+      } catch {}
+    }
+    await queryClient.invalidateQueries({ queryKey: ["gameState"] });
+  }, [queryClient, contract]);
 
   const mutation = useMutation({
     mutationFn: async () => {
