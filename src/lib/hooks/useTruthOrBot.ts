@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useCallback } from "react";
 import TruthOrBot from "../contracts/TruthOrBot";
 import { getContractAddress, getStudioUrl } from "../genlayer/client";
+import type { GameState } from "../contracts/TruthOrBot";
 import { useWallet } from "../genlayer/WalletProvider";
 import { toast } from "sonner";
 
@@ -48,8 +49,15 @@ export function useAddClaim() {
       return contract.addClaim(claim);
     },
     onSuccess: async () => {
-      // Force refresh via check_now after claim
-      await queryClient.refetchQueries({ queryKey: ["gameState"] });
+      // Force cache invalidation + immediate refetch from chain
+      queryClient.removeQueries({ queryKey: ["gameState"] });
+      if (contract) {
+        try {
+          const fresh = await contract.checkNow();
+          queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+        } catch {}
+      }
+      await queryClient.invalidateQueries({ queryKey: ["gameState"] });
       setIsSubmitting(false);
       toast.success("Claim submitted!", { description: "Your claim has been recorded on-chain." });
     },
@@ -69,8 +77,15 @@ export function useReveal() {
   const [isRevealing, setIsRevealing] = useState(false);
 
   const forceRefresh = useCallback(async () => {
-    await queryClient.refetchQueries({ queryKey: ["gameState"] });
-  }, [queryClient]);
+    queryClient.removeQueries({ queryKey: ["gameState"] });
+    if (contract) {
+      try {
+        const fresh = await contract.checkNow();
+        queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+      } catch {}
+    }
+    await queryClient.invalidateQueries({ queryKey: ["gameState"] });
+  }, [queryClient, contract]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -127,7 +142,14 @@ export function useResetGame() {
       return contract.resetGame();
     },
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ["gameState"] });
+      queryClient.removeQueries({ queryKey: ["gameState"] });
+      if (contract) {
+        try {
+          const fresh = await contract.checkNow();
+          queryClient.setQueryData(["gameState", getContractAddress()], fresh);
+        } catch {}
+      }
+      await queryClient.invalidateQueries({ queryKey: ["gameState"] });
       setIsResetting(false);
       toast.success("Game reset!", { description: "A new round has begun." });
     },
