@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useCallback } from "react";
 import TruthOrBot from "../contracts/TruthOrBot";
 import { getContractAddress, getStudioUrl } from "../genlayer/client";
+import type { GameState } from "../contracts/TruthOrBot";
 import { useWallet } from "../genlayer/WalletProvider";
 import { toast } from "sonner";
 
